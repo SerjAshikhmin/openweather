@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">WeatherDemo</string>
+    <string name="humidity_string">Влажность: %s %%</string>
+    <string name="wind_string">Ветер: %s м/с</string>
+    <string name="pressure_string">Давление: %s мм рт. ст.</string>
+</resources>
