@@ -1,6 +1,6 @@
 package ru.ashihmin.weatherdemo.data.api
 
-import io.reactivex.Single
+import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Query
 import ru.ashihmin.weatherdemo.data.api.model.FindCitiesResponse
@@ -9,19 +9,19 @@ import ru.ashihmin.weatherdemo.data.api.model.WeatherResponse
 interface OpenWeatherMapApi {
 
     @GET("weather")
-    fun getWeatherByCoords(
+    suspend fun getWeatherByCoords(
         @Query("lat") lat: Double,
         @Query("lon") lon: Double
-    ): Single<WeatherResponse>
+    ): Response<WeatherResponse?>?
 
     @GET("weather")
-    fun getWeatherByCityAndCountry(
+    suspend fun getWeatherByCityAndCountry(
         @Query("q") cityAndCountry: String
-    ): Single<WeatherResponse>
+    ): Response<WeatherResponse?>?
 
     @GET("find")
-    fun findCities(
+    suspend fun findCities(
         @Query("q") city: String
-    ): Single<FindCitiesResponse>
+    ): Response<FindCitiesResponse?>?
 
 }

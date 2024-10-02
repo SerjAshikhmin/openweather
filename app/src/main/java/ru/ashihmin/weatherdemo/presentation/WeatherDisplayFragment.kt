@@ -8,11 +8,15 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import dagger.android.support.DaggerFragment
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
 import ru.ashihmin.weatherdemo.R
 import ru.ashihmin.weatherdemo.data.api.model.MainType
-import ru.ashihmin.weatherdemo.data.api.model.WeatherResponse
 import ru.ashihmin.weatherdemo.databinding.FragmentWeatherDisplayBinding
 import java.math.RoundingMode
 import javax.inject.Inject
@@ -40,7 +44,16 @@ class WeatherDisplayFragment : DaggerFragment() {
                 val longitude = location?.longitude
                 val latitude = location?.latitude
 
-                viewModel.getWeatherByCoords(longitude, latitude)
+                lifecycleScope.launch {
+                    lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                        viewModel.getWeatherByCoords(longitude, latitude)
+
+                        viewModel.currentWeather
+                            ?.filterNotNull()
+                            ?.collect { setCurrentWeather(it) }
+                    }
+                }
+
                 println("longitude: $longitude, latitude: $latitude)")
             }
             permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
@@ -69,23 +82,28 @@ class WeatherDisplayFragment : DaggerFragment() {
         )
 
         viewModel = ViewModelProvider(this, modelFactory)[WeatherDisplayViewModel::class.java]
-        subscribeToViewModel()
+        //subscribeToViewModel()
 
         super.onViewCreated(view, savedInstanceState)
     }
 
-    private fun subscribeToViewModel() {
+    /*private fun subscribeToViewModel() {
         viewModel.currentWeather.observe(viewLifecycleOwner, this::setCurrentWeather)
-    }
+    }*/
 
-    private fun setCurrentWeather(weatherResponse: WeatherResponse?) {
-        with(binding) {
-            city.text = weatherResponse?.city
-            temperature.text = getFormattedCelsiusTemp(weatherResponse)
-            humidity.text = getConvertedHumidity(weatherResponse)
-            wind.text = getConvertedWind(weatherResponse)
-            pressure.text = getConvertedPressure(weatherResponse)
-            setWeatherIcon(weatherResponse?.weather?.get(0)?.mainType)
+    private fun setCurrentWeather(weatherState: WeatherState) {
+        when (weatherState) {
+            is WeatherState.Loading -> {}
+            is WeatherState.Success -> {
+                with(binding) {
+                    city.text = weatherState.city
+                    temperature.text = getFormattedCelsiusTemp(weatherState)
+                    humidity.text = getConvertedHumidity(weatherState)
+                    wind.text = getConvertedWind(weatherState)
+                    pressure.text = getConvertedPressure(weatherState)
+                    setWeatherIcon(weatherState.weather[0].mainType)
+                }
+            }
         }
     }
 
@@ -99,28 +117,28 @@ class WeatherDisplayFragment : DaggerFragment() {
         }
     }
 
-    private fun getConvertedWind(weatherResponse: WeatherResponse?): String? {
-        val formattedWind = String.format("%.1f", weatherResponse?.wind?.speed)
+    private fun getConvertedWind(weatherState: WeatherState.Success?): String? {
+        val formattedWind = String.format("%.1f", weatherState?.wind?.speed)
         return context?.getString(
             R.string.wind_string,
             formattedWind
         )
     }
 
-    private fun getConvertedPressure(weatherResponse: WeatherResponse?) =
+    private fun getConvertedPressure(weatherState: WeatherState.Success?) =
         context?.getString(
             R.string.pressure_string,
-            (weatherResponse?.main?.pressure?.times(0.750063755419211))?.toInt().toString()
+            (weatherState?.main?.pressure?.times(0.750063755419211))?.toInt().toString()
         )
 
-    private fun getConvertedHumidity(weatherResponse: WeatherResponse?) =
+    private fun getConvertedHumidity(weatherState: WeatherState.Success?) =
         context?.getString(
             R.string.humidity_string,
-            weatherResponse?.main?.humidity.toString()
+            weatherState?.main?.humidity.toString()
         )
 
-    private fun getFormattedCelsiusTemp(weatherResponse: WeatherResponse?): String {
-        val tempValue = weatherResponse?.main?.temperature
+    private fun getFormattedCelsiusTemp(weatherState: WeatherState.Success?): String {
+        val tempValue = weatherState?.main?.temperature
             ?.minus(273.15)
             ?.toBigDecimal()?.setScale(0, RoundingMode.HALF_UP)?.toInt() ?: 0
         return if (tempValue >= 0) {

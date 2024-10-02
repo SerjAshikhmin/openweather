@@ -1,38 +1,44 @@
 package ru.ashihmin.weatherdemo.presentation
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.rxkotlin.addTo
-import io.reactivex.rxkotlin.subscribeBy
-import io.reactivex.schedulers.Schedulers
-import ru.ashihmin.weatherdemo.data.api.OpenWeatherMapApi
-import ru.ashihmin.weatherdemo.data.api.model.WeatherResponse
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import ru.ashihmin.weatherdemo.data.api.model.MainDto
+import ru.ashihmin.weatherdemo.data.api.model.WeatherDto
+import ru.ashihmin.weatherdemo.data.api.model.WindDto
+import ru.ashihmin.weatherdemo.data.repository.WeatherRepository
 import javax.inject.Inject
 
 class WeatherDisplayViewModel @Inject constructor(
-    private val openWeatherMapApi: OpenWeatherMapApi
-) : RxViewModel() {
+    private val weatherRepository: WeatherRepository
+) : ViewModel() {
 
-    private var _currentWeather: MutableLiveData<WeatherResponse> =
-        MutableLiveData()
-    val currentWeather: LiveData<WeatherResponse> = _currentWeather
+    var currentWeather: StateFlow<WeatherState?>? = null
 
-    fun getWeatherByCoords(longitude: Double?, latitude: Double?) {
+    suspend fun getWeatherByCoords(longitude: Double?, latitude: Double?) {
         if (longitude != null && latitude != null) {
-            openWeatherMapApi.getWeatherByCoords(latitude, longitude)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribeBy(
-                    onSuccess = {
-                        _currentWeather.postValue(it)
-                    },
-                    onError = {
-                        println(it.printStackTrace())
-                    }
-                )
-                .addTo(disposables)
+            currentWeather = weatherRepository.getWeatherByCoords(latitude, longitude).map {
+                it?.toUiState()
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = WeatherState.Loading,
+            )
         }
     }
+}
 
+sealed interface WeatherState {
+
+    data object Loading: WeatherState
+
+    data class Success(
+        val weather: List<WeatherDto>,
+        val main: MainDto,
+        val wind: WindDto,
+        val city: String
+    ): WeatherState
 }

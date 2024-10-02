@@ -8,6 +8,7 @@ import retrofit2.Retrofit
 import ru.ashihmin.weatherdemo.WeatherApplication
 import ru.ashihmin.weatherdemo.data.api.OpenWeatherMapApi
 import ru.ashihmin.weatherdemo.data.db.AppDatabase
+import ru.ashihmin.weatherdemo.data.repository.WeatherRepository
 import ru.ashihmin.weatherdemo.presentation.WeatherDisplayViewModel
 import javax.inject.Singleton
 
@@ -18,6 +19,7 @@ import javax.inject.Singleton
         ContextModule::class,
         ApiModule::class,
         DatabaseModule::class,
+        WeatherRepositoryModule::class,
         ViewModelModule::class,
         AndroidInjectionModule::class,
         ActivityBuilderModule::class
@@ -30,6 +32,8 @@ interface ApplicationComponent {
     fun getRetrofit(): Retrofit
 
     fun getOpenWeatherMapApi(): OpenWeatherMapApi
+
+    fun getWeatherRepository(): WeatherRepository
 
     @Component.Builder
     interface Builder {
